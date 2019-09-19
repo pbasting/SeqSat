@@ -22,12 +22,12 @@ def main():
         read_counts, feat_counts = getSaturationData(bed, total_reads, args.gff, args.stranded, args.out)
         name = name.split(args.input[x],"/")[-1]
         labels.append(name)
-        plt.plot(read_counts, gene_counts)
+        plt.plot(read_counts, feat_counts)
 
     plt.legend(labels)
     plt.xlabel("Mapped Reads")
     plt.ylabel("features with >= 10 read(s) mapped")
-    plt.savefig(outs+"/saturation_plot.png", dpi=600)
+    plt.savefig(args.outs+"/saturation_plot.png", dpi=600)
 
 
 
