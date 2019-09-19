@@ -20,7 +20,7 @@ def main():
         total_reads = countReads(bed)
         print("total reads:",total_reads)
         read_counts, feat_counts = getSaturationData(bed, total_reads, args.gff, args.stranded, args.out)
-        name = name.split(args.input[x],"/")[-1]
+        name = args.input[x].split("/")[-1]
         labels.append(name)
         plt.plot(read_counts, feat_counts)
 
