@@ -27,7 +27,7 @@ def main():
     plt.legend(labels)
     plt.xlabel("Mapped Reads")
     plt.ylabel("features with >= 10 read(s) mapped")
-    plt.savefig(args.outs+"/saturation_plot.png", dpi=600)
+    plt.savefig(args.out+"/saturation_plot.png", dpi=600)
 
 
 
