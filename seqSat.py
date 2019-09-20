@@ -14,21 +14,41 @@ RUNID = rd.randint(1000,9999)
 def main():
     args = parseArgs()
     labels = []
-    for x in range(0,len(args.input)):
-        bam = mapReads(args.input[x], args.pair[x], args.fasta, args.cores, args.out)
-        bed = bamToBed(bam, args.out)
-        total_reads = countReads(bed)
-        print("total reads:",total_reads)
-        read_counts, feat_counts = getSaturationData(bed, total_reads, args.gff, args.stranded, args.out)
-        name = args.input[x].split("/")[-1]
-        labels.append(name)
-        plt.plot(read_counts, feat_counts)
+    if args.seed is not None:
+        rd.seed(args.seed)
 
-    plt.legend(labels)
-    plt.xlabel("Mapped Reads")
-    plt.ylabel("features with >= 10 read(s) mapped")
-    plt.savefig(args.out+"/saturation_plot.png", dpi=600)
+    try:
+        for x in range(0,len(args.input)):
+            bam = mapReads(args.input[x], args.pair[x], args.fasta, args.cores, args.out)
+            bed = bamToBed(bam, args.out)
+            total_reads = countReads(bed)
+            total_feats = countReads(args.gff)
+            print("total reads:",total_reads)
+            read_counts, feat_counts = getSaturationData(bed, total_reads, args.gff, args.stranded, args.threshold, args.out)
 
+            if args.names is None:
+                name = args.input[x].split("/")[-1]
+                name = name.split(".")[0]
+                labels.append(name)
+            else:
+                labels.append(args.names[x])
+
+            ax = plt.gca()
+            marker_color = next(ax._get_lines.prop_cycler)['color']
+            plt.plot(read_counts, feat_counts, marker=".", linewidth=0.4, color="black", markerfacecolor=marker_color, markeredgecolor=marker_color, alpha=0.65, markersize=7)
+
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.grid(color='grey', linestyle='-', linewidth=0.25, alpha=0.5)
+        plt.legend(labels)
+        plt.xlabel("mapped reads")
+        plt.ylabel("features with >="+str(args.threshold)+" read(s) mapped")
+        plt.ylim(0,total_feats)
+        plt.savefig(args.out+"/saturation_plot.png", dpi=600)
+    except:
+        cleanFiles(args.out)
+        raise
+        sys.exit(1)
 
 
 def parseArgs():
@@ -43,7 +63,10 @@ def parseArgs():
     parser.add_argument("-p", "--pair", nargs="+", type=str, help="second fastq(.gz) if sample is paired-end", required=False)
     parser.add_argument("-o", "--out", type=str, help="directory to output data (default = '.') ", required=False)
     parser.add_argument("-c", "--cores", type=int, help="max cpu cores to use (default = '1') ", required=False)
+    parser.add_argument("-t", "--threshold", type=int, help="minimum number of mapped reads for a feature to be considered discovered (default = '10') ", required=False)
     parser.add_argument("-s", "--stranded", action="store_true", help="use stranded information when counting reads", required=False)
+    parser.add_argument("-r", "--seed", type=str, help="seed used for pseudo-random number generation (default = sys time)", required=False)
+    parser.add_argument("-n", "--names", nargs="+", type=str, help="sample names to use in plot legend, same order as -i/--input", required=False)
 
     args = parser.parse_args()
 
@@ -65,6 +88,13 @@ def parseArgs():
     else:
         args.pair = [None] * len(args.input)
 
+
+    if len(args.input) != len(args.pair):
+        sys.exit("number of fastq1 (-i/--input) does not equal number of fastq2 (-p/--pair)... exiting...\n")
+
+    if args.names is not None and len(args.input) != len(args.names):
+        sys.exit("number of fastq (-i/--input) does not equal number of names provided (-n/--names)... exiting...\n")
+
     # sets up out dir variable
     if args.out is None:
         args.out = "."
@@ -75,6 +105,9 @@ def parseArgs():
     #setup cores setting
     if args.cores is None:
         args.cores = 1
+    
+    if args.threshold is None:
+        args.threshold = 10
     
     if args.stranded is None:
         args.stranded = False
@@ -122,14 +155,14 @@ def countReads(bed):
     read_count = 0
     with open(bed,"r") as bd:
         for line in bd:
-            read_count+=1
+            if line[0] != "#":
+                read_count+=1
     
     return read_count
 
 
-def getSaturationData(bed, total_reads, gff, stranded, out):
+def getSaturationData(bed, total_reads, gff, stranded, threshold, out):
     interval = total_reads//30
-    threshold = 1
 
     read_counts = [0]
     gene_counts = [0]
@@ -190,6 +223,21 @@ def countDiscoveredGenes(sub_bed, gff, threshold, stranded, out):
     os.remove(count_bed)
 
     return gene_count
+
+
+def cleanFiles(out):
+    out_files = [
+        out+"/"+str(RUNID)+"tmp.sam",
+        out+"/"+str(RUNID)+"tmp.sam.mapped",
+        out+"/"+str(RUNID)+"tmp.subset.bed",
+        out+"/"+str(RUNID)+"tmp.allreads.bed",
+        out+"/"+str(RUNID)+"tmp.count.bed"
+    ]
+
+    for f in out_files:
+        if fileExists(f):
+            os.remove(f)
+
 
 
 
