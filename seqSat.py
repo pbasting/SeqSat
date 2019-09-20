@@ -20,6 +20,7 @@ def main():
     try:
         for x in range(0,len(args.input)):
             bam = mapReads(args.input[x], args.pair[x], args.fasta, args.cores, args.out)
+            bam = getFeatMappedReads(bam, args.gff, args.out)
             bed = bamToBed(bam, args.out)
             total_reads = countReads(bed)
             total_feats = countReads(args.gff)
@@ -35,13 +36,14 @@ def main():
 
             ax = plt.gca()
             marker_color = next(ax._get_lines.prop_cycler)['color']
-            plt.plot(read_counts, feat_counts, marker=".", linewidth=0.4, color="black", markerfacecolor=marker_color, markeredgecolor=marker_color, alpha=0.65, markersize=7)
+            plt.plot(read_counts, feat_counts, linewidth=1, color=marker_color)
+            plt.scatter(read_counts[-1],feat_counts[-1],color=marker_color, s=20)
 
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.grid(color='grey', linestyle='-', linewidth=0.25, alpha=0.5)
         plt.legend(labels)
-        plt.xlabel("mapped reads")
+        plt.xlabel("feature-mapped reads")
         plt.ylabel("features with >="+str(args.threshold)+" read(s) mapped")
         plt.ylim(0,total_feats)
         plt.savefig(args.out+"/saturation_plot.png", dpi=600)
@@ -140,6 +142,18 @@ def mapReads(fq, fq2, fasta, cores, out):
 
     return out_bam_mapped
 
+def getFeatMappedReads(bam, gff, out):
+    out_bam_file = out+"/"+str(RUNID)+"tmp.featmapped.bam"
+    out_bam = open(out_bam_file,"w")
+    subprocess.call(["bedtools","intersect","-abam",bam,"-b",gff],stdout=out_bam)
+    out_bam.close()
+
+    os.remove(bam)
+
+    return out_bam_file
+
+
+
 def bamToBed(bam, out):
     out_bed = out+"/"+str(RUNID)+"tmp.allreads.bed"
 
@@ -231,7 +245,8 @@ def cleanFiles(out):
         out+"/"+str(RUNID)+"tmp.sam.mapped",
         out+"/"+str(RUNID)+"tmp.subset.bed",
         out+"/"+str(RUNID)+"tmp.allreads.bed",
-        out+"/"+str(RUNID)+"tmp.count.bed"
+        out+"/"+str(RUNID)+"tmp.count.bed",
+        out+"/"+str(RUNID)+"tmp.featmapped.bam"
     ]
 
     for f in out_files:
