@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 
 RUNID = rd.randint(1000,9999)
+plt.set_cmap('Spectral')
 
 
 def main():
@@ -27,17 +28,12 @@ def main():
             print("total reads:",total_reads)
             read_counts, feat_counts = getSaturationData(bed, total_reads, args.gff, args.stranded, args.threshold, args.out)
 
-            if args.names is None:
-                name = args.input[x].split("/")[-1]
-                name = name.split(".")[0]
-                labels.append(name)
-            else:
-                labels.append(args.names[x])
+            labels.append(args.names[x])
 
             ax = plt.gca()
             marker_color = next(ax._get_lines.prop_cycler)['color']
-            plt.plot(read_counts, feat_counts, linewidth=1, color=marker_color)
-            plt.scatter(read_counts[-1],feat_counts[-1],color=marker_color, s=20)
+            plt.plot(read_counts, feat_counts, linewidth=1, color=marker_color, alpha=0.65)
+            plt.scatter(read_counts[-1],feat_counts[-1],color=marker_color, s=40)
 
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
@@ -84,8 +80,9 @@ def parseArgs():
 
     # checks if fastq 2 exists
     if args.pair is not None:
-        if not fileExists(args.pair):
-            sys.exit("ERROR: "+args.pair+" file not found....exiting...\n")
+        for fq in args.pair:
+            if not fileExists(fq):
+                sys.exit("ERROR: "+fq+" file not found....exiting...\n")
     
     else:
         args.pair = [None] * len(args.input)
@@ -113,6 +110,14 @@ def parseArgs():
     
     if args.stranded is None:
         args.stranded = False
+
+    
+    if args.names is None:
+        names = []
+        for fq in args.input:
+            name = fq.split("/")[-1]
+            name = name.split(".")[0]
+            names.append(name)
 
     return args
 
@@ -176,7 +181,7 @@ def countReads(bed):
 
 
 def getSaturationData(bed, total_reads, gff, stranded, threshold, out):
-    interval = total_reads//30
+    interval = total_reads//100
 
     read_counts = [0]
     gene_counts = [0]
